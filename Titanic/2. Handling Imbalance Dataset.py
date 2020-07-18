@@ -13,34 +13,34 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 import seaborn as sns
 
 
-# In[6]:
+# In[2]:
 
 
 train = pd.read_csv(r'./titanic/train_set.csv')
 test = pd.read_csv(r'./titanic/test_set.csv')
 
 
-# In[7]:
+# In[3]:
 
 
 train.head()
 
 
-# In[9]:
+# In[4]:
 
 
 plt.figure(figsize=(15, 8))
 sns.heatmap(train.corr())
 
 
-# In[31]:
+# In[5]:
 
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 
-# In[34]:
+# In[6]:
 
 
 cols = list(train.columns)[1:]
@@ -48,7 +48,7 @@ train_x = train.loc[:,cols]
 train_y = train.loc[:,'Survived']
 
 
-# In[37]:
+# In[7]:
 
 
 train_x.shape, train_y.shape
@@ -56,38 +56,40 @@ train_x.shape, train_y.shape
 
 # ### 1.1 Data Scaling & Splitting
 
-# In[38]:
+# In[8]:
 
 
 scaler = StandardScaler()
 scaled_train_x = scaler.fit_transform(train_x)
 
 
-# In[39]:
+# In[9]:
 
 
 scaled_train_x
 
 
-# In[42]:
+# In[10]:
 
 
 train_set, test_set, train_label, test_label = train_test_split(scaled_train_x, train_y, test_size=0.1, shuffle=True)
 
 
-# In[44]:
+# In[11]:
 
 
 train_set.shape, train_label.shape
 
 
-# In[45]:
+# In[12]:
 
 
 test_set.shape, test_label.shape
 
 
-# In[53]:
+# ### 1.2 Data Modeling
+
+# In[13]:
 
 
 # Data Modeling
@@ -98,161 +100,191 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 
 
-# ### 1.2 Linear Regression
-
-# In[54]:
+# In[19]:
 
 
-lr_model = LogisticRegression()
-lr_model.fit(train_set, train_label)
-lr_predictions = lr_model.predict(test_set)
+models = [LogisticRegression, DecisionTreeClassifier, RandomForestClassifier, AdaBoostClassifier, BaggingClassifier,          GradientBoostingClassifier, SVC]
+
+
+# In[34]:
+
+
+scores = {}
+for model in models:
+    model = model()
+    model.fit(X=train_set, y=train_label)
+    predictions = model.predict(test_set)
+    scores[model.__class__.__name__] = {'precision': precision_score(test_label, predictions, average='micro'),                                       'recall': recall_score(test_label, predictions, average='binary'),                                       'accuracy': accuracy_score(test_label, predictions)}
+
+
+# In[35]:
+
+
+scores
+
+
+# In[36]:
+
+
+models_score = pd.DataFrame(scores.values(), index=scores.keys())
+
+
+# In[37]:
+
+
+models_score
+
+
+# <p>Highest Recall achieved so far is 72% by <b>BaggingClassifier</b>. The reason of not achieving good recall is the imbalance dataset. We will be handling this out in next steps. As we know data is imbalanced, that's why accuracy is not reliable even achieved about 80%.</p>
+
+# ## 2. Imbalance Dataset
+
+# In[45]:
+
+
+train['Survived'].value_counts()
+
+
+# ### 2.1 Under Sampling
+
+# In[64]:
+
+
+train_0 = train[train['Survived']==0].sample(n=263, replace=False)
+train_1 = train[train['Survived']==1]
 
 
 # In[67]:
 
 
-# accuracy, precision & recall for Linear Regreesion
-lr_precision = precision_score(test_label, lr_predictions, average='micro')
-lr_recall = recall_score(test_label, lr_predictions, average='binary')
-lr_accuracy = accuracy_score(test_label, lr_predictions)
-print("Linar Regression Precision: ",lr_precision)
-print("Linar Regression Recall: ",lr_recall)
-print("Linar Regression Accuracy: ",lr_accuracy)
-
-
-# ### 1.3 Decision Tree
-
-# In[62]:
-
-
-dt_model = DecisionTreeClassifier()
-dt_model.fit(train_set, train_label)
-dt_predictions = dt_model.predict(test_set)
+train_ = pd.concat([train_0, train_1])
+train_.reset_index(drop=True, inplace=True)
 
 
 # In[69]:
 
 
-# accuracy, precision & recall for Decision Tree
-dt_precision = precision_score(test_label, dt_predictions, average='micro')
-dt_recall = recall_score(test_label, dt_predictions, average='binary')
-dt_accuracy = accuracy_score(test_label, dt_predictions)
-print("Decision Tree Precision: ",dt_precision)
-print("Decision Tree Recall: ",dt_recall)
-print("Decision Tree Accuracy: ",dt_accuracy)
+train_.shape
 
 
-# ### 1.4 Random Forest
+# In[73]:
+
+
+train_ = train_.sample(frac=1, random_state=42).reset_index(drop=True)
+
+
+# In[75]:
+
+
+train_.head()
+
 
 # In[76]:
 
 
-rf_model = RandomForestClassifier()
-rf_model.fit(train_set, train_label)
-rf_predictions = rf_model.predict(test_set)
+train_.tail()
 
 
-# In[82]:
+# In[80]:
 
 
-# accuracy, precision & recall for Random Forest
-rf_precision = precision_score(test_label, rf_predictions, average='micro')
-rf_recall = recall_score(test_label, rf_predictions, average='binary')
-rf_accuracy = accuracy_score(test_label, rf_predictions)
-print("Random Forest Precision: ",rf_precision)
-print("Random Forest Recall: ",rf_recall)
-print("Random Forest Accuracy: ",rf_accuracy)
+cols = list(train_.columns)[1:]
+train_x = train_.loc[:,cols]
+train_y = train_.loc[:,'Survived']
 
 
-# ### 1.5 AdaBoost
-
-# In[79]:
+# In[83]:
 
 
-AdaBoost_model = AdaBoostClassifier()
-AdaBoost_model.fit(train_set, train_label)
-AdaBoost_predictions = AdaBoost_model.predict(test_set)
+train_x.shape, train_y.shape
 
 
-# In[81]:
+# In[84]:
 
 
-# accuracy, precision & recall for AdaBoost
-adaBoost_precision = precision_score(test_label, AdaBoost_predictions, average='micro')
-adaBoost_recall = recall_score(test_label, AdaBoost_predictions, average='binary')
-adaBoost_accuracy = accuracy_score(test_label, AdaBoost_predictions)
-print("AdaBoost Precision: ",adaBoost_precision)
-print("AdaBoost Recall: ",adaBoost_recall)
-print("AdaBoost Accuracy: ",adaBoost_accuracy)
+scaler = StandardScaler()
+scaled_train_x = scaler.fit_transform(train_x)
 
-
-# ### 1.6 Gradient Boosting
 
 # In[85]:
 
 
-GB_model = GradientBoostingClassifier()
-GB_model.fit(train_set, train_label)
-GB_predictions = GB_model.predict(test_set)
+train_set, test_set, train_label, test_label = train_test_split(scaled_train_x, train_y, test_size=0.1, shuffle=True)
 
-
-# In[86]:
-
-
-# accuracy, precision & recall for Gradient Boosting
-gb_precision = precision_score(test_label, GB_predictions, average='micro')
-gb_recall = recall_score(test_label, GB_predictions, average='binary')
-gb_accuracy = accuracy_score(test_label, GB_predictions)
-print("Gradient Boosting Precision: ",gb_precision)
-print("Gradient Boosting Recall: ",gb_recall)
-print("Gradient Boosting Accuracy: ",gb_accuracy)
-
-
-# ### 1.7 Support Vector Machine
 
 # In[88]:
 
 
-svc_model = SVC()
-svc_model.fit(train_set, train_label)
-svc_predictions = svc_model.predict(test_set)
+train_set.shape, train_label.shape
 
 
 # In[89]:
 
 
-# accuracy, precision & recall for Support Vector Machine
-svc_precision = precision_score(test_label, svc_predictions, average='micro')
-svc_recall = recall_score(test_label, svc_predictions, average='binary')
-svc_accuracy = accuracy_score(test_label, svc_predictions)
-print("Support Vector Machine Precision: ",svc_precision)
-print("Support Vector Machine Recall: ",svc_recall)
-print("Support Vector Machine Accuracy: ",svc_accuracy)
+test_set.shape, test_label.shape
 
-
-# ### 1.8 Bagging
 
 # In[90]:
 
 
-bag_model = BaggingClassifier()
-bag_model.fit(train_set, train_label)
-bag_predictions = bag_model.predict(test_set)
+# Data Modeling
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier, BaggingClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score, recall_score
 
 
 # In[91]:
 
 
-# accuracy, precision & recall for Bagging Classifier
-bag_precision = precision_score(test_label, bag_predictions, average='micro')
-bag_recall = recall_score(test_label, bag_predictions, average='binary')
-bag_accuracy = accuracy_score(test_label, bag_predictions)
-print("Bagging Classifier Precision: ",bag_precision)
-print("Bagging Classifier Recall: ",bag_recall)
-print("Bagging Classifier Accuracy: ",bag_accuracy)
+models = [LogisticRegression, DecisionTreeClassifier, RandomForestClassifier, AdaBoostClassifier, BaggingClassifier,          GradientBoostingClassifier, SVC]
 
 
-# <p>Highest Recall achieved so far is 65% by <b>Linear Regression</b> & <b>Support Vector Machine</b>. The reason of not achieving good recall is the imbalance dataset. We will be handling this out in next steps.</p>
+# In[92]:
+
+
+scores = {}
+for model in models:
+    model = model()
+    model.fit(X=train_set, y=train_label)
+    predictions = model.predict(test_set)
+    scores[model.__class__.__name__] = {'precision': precision_score(test_label, predictions, average='micro'),                                       'recall': recall_score(test_label, predictions, average='binary'),                                       'accuracy': accuracy_score(test_label, predictions)}
+
+
+# In[93]:
+
+
+scores
+
+
+# In[94]:
+
+
+models_score_2 = pd.DataFrame(scores.values(), index=scores.keys())
+
+
+# In[95]:
+
+
+models_score_2
+
+
+# In[96]:
+
+
+models_score['precision_under_sample'] = models_score_2['precision']
+models_score['recall_under_sample'] = models_score_2['recall']
+models_score['accuracy_under_sample'] = models_score_2['accuracy']
+
+
+# In[97]:
+
+
+models_score
+
+
+# <p>Highest Recall achieved after under sampling is <b>74%</b> which is 2% more than earlier. We will apply oversampling method to check if there is possibility to improve the model performance.</p>
 
 # In[ ]:
 
